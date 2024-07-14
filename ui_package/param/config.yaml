@@ -1,0 +1,11 @@
+odom_topic: /odom
+
+needCheckCharger: False
+charge_station_connected_topic: /charge_station_connected
+
+sensors_topic: /sensors
+#----------------------------------
+appAddress: 192.168.0.104
+portBridge: 9090
+portApp: 5050
+portVideo: 8090
