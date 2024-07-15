@@ -36,7 +36,6 @@ class UIFoldersHandler:
         rospy.Subscriber("WP_req", Empty, self.WP_req_callback)
         
         self.ui_pub = rospy.Publisher('ui_message', String, queue_size=1)
-        self.poseArray = rospy.Publisher("WPs_topic", PoseArray, queue_size=1)
         self.poseArray_publisher = rospy.Publisher("WayPoints_topic", ArrayPoseStampedWithCovariance, queue_size=1)
         self.set_pose = rospy.Publisher('initialpose', PoseWithCovarianceStamped, queue_size=1)
 
@@ -97,11 +96,10 @@ class UIFoldersHandler:
         return poses
 
     def WP_req_callback(self, data):
-        time.sleep(0.5)
+        time.sleep(1.5)
 
         self.read_wp()  
         self.poseArray_publisher.publish(self.convert_PoseWithCovArray_to_PoseArrayCov(self.waypoints))
-        self.poseArray.publish(self.convert_PoseArray(self.waypoints))
  
     def read_wp(self):
         route_file = self.get_cur_files()["route_file"]

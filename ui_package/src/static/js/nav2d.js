@@ -77,12 +77,13 @@ const navigator = (ros) => {
   createSubscribeTopic(
     ros,
     "/WayPoints_topic",
-    "osumy_new_ui/ArrayPoseStampedWithCovariance",
+    "ui_package/ArrayPoseStampedWithCovariance",
     (data) => {
       if (!Array.isArray(data.poses)) {
         console.error("WPs_topic data.poses is not an array");
         return;
       }
+      console.log("WayPoints_topic callback");
       window.NAV2D.ClearMap();
       window.NAV2D.pointsArray = data.poses.map((point) => {
         const defaultPointItem = serializePoint(point, canvas);
