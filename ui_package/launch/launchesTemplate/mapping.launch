@@ -1,9 +1,9 @@
 <launch>
 
   <!--Start gmapping-->
-  <include file="$(find ui_package)/launch/gmapping.launch"/>
+  <include file="$(find ui_package)/launch/launchesTemplate/gmapping.launch"/>
 
   <!--Start movebase-->
-  <include file="$(find ui_package)/launch/move_base.launch"/> 
+  <include file="$(find ui_package)/launch/launchesTemplate/move_base.launch"/> 
 
 </launch>
