@@ -14,6 +14,7 @@ from geometry_msgs.msg import PoseWithCovarianceStamped, PoseArray, Pose, PoseSt
 from nav_msgs.msg import Odometry
 from std_msgs.msg import String, Empty
 from ui_package.msg import ArrayPoseStampedWithCovariance
+from nav_msgs.srv import LoadMap
 
 
 class UIFoldersHandler:
@@ -45,6 +46,9 @@ class UIFoldersHandler:
         self.routs_folder = f"{rospkg.RosPack().get_path('ui_package')}/paths"
         self.current_files = f"{rospkg.RosPack().get_path('ui_package')}/param/current_map_route.yaml"
         
+        self.mappingCmd = rospy.get_param("mappingLaunch", "")
+        self.navigationCmd = rospy.get_param("navigationLaunch", "")
+        
         self.dict_cmd = None
         
         # TODO
@@ -55,6 +59,12 @@ class UIFoldersHandler:
         subprocess.Popen(run_map_server_command, stdout=subprocess.PIPE, shell=True, preexec_fn=os.setsid)
         # --------
 
+        rospy.loginfo('Connecting to map_server...')
+        rospy.wait_for_service('/change_map')
+        rospy.loginfo('Connected to map_server...')
+        self.change_map_service = rospy.ServiceProxy('/change_map', LoadMap)
+        
+        
     def odom_callback(self, data):
         self.position = data.pose.pose
 
@@ -96,7 +106,7 @@ class UIFoldersHandler:
         return poses
 
     def WP_req_callback(self, data):
-        time.sleep(1.5)
+        time.sleep(0.5)
 
         self.read_wp()  
         self.poseArray_publisher.publish(self.convert_PoseWithCovArray_to_PoseArrayCov(self.waypoints))
@@ -161,7 +171,7 @@ class UIFoldersHandler:
             os.system("rosnode kill /map_server")
             time.sleep(1)
             
-            subprocess.Popen("roslaunch ui_package osumy_gmap.launch ", stdout=subprocess.PIPE,
+            subprocess.Popen(f"roslaunch {self.mappingCmd}", stdout=subprocess.PIPE,
                             shell=True, preexec_fn=os.setsid)
             time.sleep(3)
             self.ui_pub.publish("Move the robot along the perimeter of the room and in the "
@@ -197,13 +207,12 @@ class UIFoldersHandler:
 
             # 3. reload
             os.system("rosnode kill /slam_gmapping")
-            os.system("rosnode kill /move_base")
             os.system("rosnode kill /map_server")
 
             self.ui_pub.publish("Localization...")
             time.sleep(1)
 
-            subprocess.Popen("roslaunch ui_package osumy_nav.launch", stdout=subprocess.PIPE,
+            subprocess.Popen(f"roslaunch {self.navigationCmd}", stdout=subprocess.PIPE,
                             shell=True, preexec_fn=os.setsid)
             
             rospy.loginfo("running saved map")  
@@ -232,9 +241,7 @@ class UIFoldersHandler:
             rospy.loginfo(f"Error in save_map_func: {e}")
 
     def change_map_func(self):
-        try:           
-            os.system("rosnode kill /map_server")  
-            time.sleep(0.5)        
+        try:                
 
             path_to_new_map = f"{self.maps_folder}/{self.dict_cmd['group']}/{self.dict_cmd['map']}"
             map_yaml_file = f"{path_to_new_map}.yaml"
@@ -252,8 +259,13 @@ class UIFoldersHandler:
 
             rospy.loginfo(path_to_new_map) 
             
-            command = f"roslaunch ui_package map_server.launch map_file:={map_yaml_file}"
-            subprocess.Popen(command, stdout=subprocess.PIPE, shell=True, preexec_fn=os.setsid)
+            
+            print(f"service change map {map_yaml_file}")
+            print(self.change_map_service)
+            print(self.change_map_service(map_yaml_file))
+            
+            # command = f"rosservice call /change_map 'map_url: '{map_yaml_file}'"
+            # subprocess.Popen(command, stdout=subprocess.PIPE, shell=True, preexec_fn=os.setsid)
             self.nav_data_pub.publish(self.get_paths())
         except Exception as e:
             rospy.loginfo(f"Error in change_map_func: {e}")

@@ -1,11 +1,33 @@
 window.NAV2D = window.NAV2D || {};
 
 window.NAV2D.pointsArray = [];
+window.NAV2D.pointsFromTopic = [];
 window.NAV2D.arePointsSettable = false;
 window.NAV2D.canvas = null;
 window.NAV2D.pointType = null;
 window.NAV2D.finishedPointItem = null;
 window.NAV2D.orientatedPointItem = null;
+
+window.NAV2D.mapInited = false;
+window.NAV2D.scale = { x: 0, y: 0 };
+
+window.NAV2D.checkScale = () => {
+  // Your code to be executed periodically
+  if (window.NAV2D.scale.x != window.NAV2D.canvas.scene.scaleX || window.NAV2D.scale.y != window.NAV2D.canvas.scene.scaleY) 
+  {
+    window.NAV2D.scale.x = window.NAV2D.canvas.scene.scaleX;
+    window.NAV2D.scale.y = window.NAV2D.canvas.scene.scaleY;
+    window.NAV2D.pointsArray = drawPoints(
+      window.NAV2D.pointsFromTopic,
+      window.NAV2D.canvas.scene,
+    );
+  }
+}
+
+// Call the function every 1 second (1000 milliseconds)
+const intervalId = setInterval(window.NAV2D.checkScale, 100);
+
+console.log("hello ");
 
 window.NAV2D.InitMap = (ros) => {
   const topic = "/map";
@@ -20,7 +42,6 @@ window.NAV2D.InitMap = (ros) => {
 
   /* Updating map after topic event */
   client.on("change", () => {
-    navigator(ros);
     /* Scale the canvas to fit the map */
     window.NAV2D.canvas.scaleToDimensions(
       client.currentGrid.width,
@@ -30,7 +51,17 @@ window.NAV2D.InitMap = (ros) => {
       client.currentGrid.pose.position.x,
       client.currentGrid.pose.position.y,
     );
+
+    window.NAV2D.pointsArray = drawPoints(
+      window.NAV2D.pointsFromTopic,
+      window.NAV2D.canvas.scene,
+    );
   });
+
+  if (!window.NAV2D.mapInited) {
+    window.NAV2D.mapInited = true;
+    navigator(ros);
+  }
 };
 
 /* Cleaning map */
@@ -40,6 +71,19 @@ window.NAV2D.ClearMap = () => {
   );
   window.NAV2D.pointsArray = [];
 };
+
+const drawPoints = (points, canvas) => {
+  if (!(points && canvas)) return;
+  window.NAV2D.ClearMap();
+
+  window.NAV2D.pointsArray = points.map((point) => {
+    const defaultPointItem = serializePoint(point, canvas);
+    canvas.addChild(defaultPointItem);
+    return defaultPointItem;
+  });
+  return window.NAV2D.pointsArray;
+};
+
 
 const navigator = (ros) => {
   const canvas = window.NAV2D.canvas.scene;
@@ -58,38 +102,18 @@ const navigator = (ros) => {
 
   /* Receiving array of points*/
 
-  /* OLD VERSION*/
-  // createSubscribeTopic(ros, "/WPs_topic", "geometry_msgs/PoseArray", (data) => {
-  //   if (!Array.isArray(data.poses)) {
-  //     console.error("WPs_topic data.poses is not an array");
-  //     return;
-  //   }
-  //   console.log("WPs_topic data poses", data.poses);
-  //   window.NAV2D.pointsArray = data.poses.map((point) => {
-  //     const defaultPointItem = serializePoint(point, canvas);
-  //     canvas.addChild(defaultPointItem);
-  //     return defaultPointItem;
-  //   });
-  // });
-
-  /* NEW VERSION */
-
   createSubscribeTopic(
     ros,
     "/WayPoints_topic",
     "ui_package/ArrayPoseStampedWithCovariance",
     (data) => {
       if (!Array.isArray(data.poses)) {
-        console.error("WPs_topic data.poses is not an array");
+        console.error("WayPoints_topic data.poses is not an array");
         return;
       }
-      console.log("WayPoints_topic callback");
-      window.NAV2D.ClearMap();
-      window.NAV2D.pointsArray = data.poses.map((point) => {
-        const defaultPointItem = serializePoint(point, canvas);
-        canvas.addChild(defaultPointItem);
-        return defaultPointItem;
-      });
+      window.NAV2D.pointsFromTopic = data.poses;
+      window.NAV2D.pointsArray = drawPoints(data.poses, canvas);
+      window.NAV2D.mapInited = false;
     },
   );
 
@@ -101,7 +125,6 @@ const navigator = (ros) => {
     a: 1,
   });
   robotMarker.visible = false;
-  let isRobotMarkerScaled = false;
   canvas.addChild(robotMarker);
 
   /* Robot position watcher */
@@ -109,13 +132,12 @@ const navigator = (ros) => {
     const pose = data.pose.pose;
     robotMarker.x = pose.position.x;
     robotMarker.y = -pose.position.y;
-    if (!isRobotMarkerScaled) {
-      robotMarker.scaleX = 1.0 / canvas.scaleX;
-      robotMarker.scaleY = 1.0 / canvas.scaleY;
-      isRobotMarkerScaled = true;
-    }
+    robotMarker.scaleX = 1.0 / canvas.scaleX;
+    robotMarker.scaleY = 1.0 / canvas.scaleY;
     robotMarker.rotation = canvas.rosQuaternionToGlobalTheta(pose.orientation);
     robotMarker.visible = true;
+
+    console.log("odom", window.NAV2D.canvas.scene.scaleX, window.NAV2D.canvas.scene.scaleY);
   });
 
   /* MOUSE EVENT SECTION */
@@ -349,7 +371,7 @@ window.NAV2D.sendPointToRobot = (ros, time) => {
   } else if (window.NAV2D.pointType === "charge") {
     sendDataArray[0] = 2;
   }
-*/
+  */
   sendDataArray[0] = 3;
   sendDataArray[1] = Number(hours) || 0;
   sendDataArray[2] = Number(minutes) || 0;
@@ -393,6 +415,7 @@ const serializePoint = (point, canvas) => {
   );
   defaultPointItem.scaleX = 1.0 / canvas.scaleX;
   defaultPointItem.scaleY = 1.0 / canvas.scaleY;
+
 
   return defaultPointItem;
 };

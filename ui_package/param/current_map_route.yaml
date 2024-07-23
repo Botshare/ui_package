@@ -1,2 +1,2 @@
-map_file: /home/ubuntu/catkin_ws/src/ui_package/maps/pipi/house1.yaml
-route_file: /home/ubuntu/catkin_ws/src/ui_package/paths/pipi/house1/123re.csv
+map_file: /home/ubuntu/catkin_ws/src/ui_package/maps/Group1/Map1.yaml
+route_file: /home/ubuntu/catkin_ws/src/ui_package/paths/Group1/Map1/Route1.csv
